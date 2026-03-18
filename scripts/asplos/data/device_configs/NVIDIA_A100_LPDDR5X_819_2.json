@@ -1,0 +1,10 @@
+{
+    "Device":"NVIDIA A100-LPDDR5X-819.2",
+    "Dev_Mem":40,
+    "Mem_Bw":819.2,
+    "Num_Sm":108,
+    "Core_Per_SM":64,
+    "Freq":1410,
+    "SingleFLOPs":19492,
+    "L2Cache":40
+}
