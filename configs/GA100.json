@@ -1,0 +1,10 @@
+{
+  "name": "GA100",
+  "memory_bandwidth_gbps": 2048.0,
+  "neusight_device_config_path": "scripts/asplos/data/device_configs/NVIDIA_GA100_HBM2_2048.json",
+  "area": {
+    "compute_area_mm2": 0.0,
+    "io_area_mm2": 0.0,
+    "l3_area_mm2": 0.0
+  }
+}
