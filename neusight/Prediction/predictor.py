@@ -9,6 +9,7 @@ import os
 from ..Model.model_provider import model_provider
 from ..Tracing.parse import parse_trace
 from ..Tracing.trace import trace_graph
+from ..Tracing.custom_gpt import build_gpt_autoregressive_graph
 from .aggregator import aggregate_latency
 
 ops_dict = {
@@ -299,6 +300,7 @@ class NeusightPredictor():
         result_dir = Path(result_dir)
 
         is_train = (execution_type == "train")
+        custom_graph_mode = execution_type in {"prefill", "decode"}
         
         if model_name is None:
             model_name = Path(model_config_path).name.split(".")[0]
@@ -362,19 +364,56 @@ class NeusightPredictor():
         with open(device_config_path, "r") as f:
             device_config = json.load(f)
 
-        # trace raw operator graph
         print(trace_name)
-        if os.path.exists(trace_name):
-            print("already exists : ", os.path.realpath(trace_name))
-            pass
+        print(parse_name)
+
+        if custom_graph_mode:
+            if "gpt" not in model_name:
+                raise NotImplementedError("prefill/decode custom graph is only implemented for GPT-style models")
+
+            if os.path.exists(parse_name):
+                print("already exists : ", os.path.realpath(parse_name))
+            else:
+                with open(model_config_path) as f:
+                    custom_config = json.load(f)
+                df = build_gpt_autoregressive_graph(
+                    config=custom_config,
+                    batch_size=batch_size,
+                    sequence_length=sequence_length,
+                    execution_type=execution_type,
+                )
+                dump_df(df, parse_name)
         else:
-            df, _ = trace_graph(
-                                model_config_path=model_config_path, 
-                                sequence_length=sequence_length, 
-                                batch_size=batch_size, 
+            # trace raw operator graph
+            if os.path.exists(trace_name):
+                print("already exists : ", os.path.realpath(trace_name))
+                pass
+            else:
+                df, _ = trace_graph(
+                                    model_config_path=model_config_path, 
+                                    sequence_length=sequence_length, 
+                                    batch_size=batch_size, 
+                                    is_train=is_train, 
+                                    bench=False, 
+                                    single_layer=single_layer, 
+                                    fusion=fusion,
+                                    distributed=distributed,
+                                    dp_degree=dp_degree,
+                                    pp_degree=pp_degree,
+                                    pp_num_microbatch=pp_num_microbatch,
+                                    tp_degree=tp_degree,
+                                )
+                dump_df(df, trace_name)
+
+            # parse operator graph
+            if os.path.exists(parse_name):
+                print("already exists : ", os.path.realpath(parse_name))
+                pass
+            else:
+                df = parse_trace(
+                                trace_name, 
                                 is_train=is_train, 
                                 bench=False, 
-                                single_layer=single_layer, 
                                 fusion=fusion,
                                 distributed=distributed,
                                 dp_degree=dp_degree,
@@ -382,26 +421,7 @@ class NeusightPredictor():
                                 pp_num_microbatch=pp_num_microbatch,
                                 tp_degree=tp_degree,
                             )
-            dump_df(df, trace_name)
-
-        # parse operator graph
-        print(parse_name)
-        if os.path.exists(parse_name):
-            print("already exists : ", os.path.realpath(parse_name))
-            pass
-        else:
-            df = parse_trace(
-                            trace_name, 
-                            is_train=is_train, 
-                            bench=False, 
-                            fusion=fusion,
-                            distributed=distributed,
-                            dp_degree=dp_degree,
-                            pp_degree=pp_degree,
-                            pp_num_microbatch=pp_num_microbatch,
-                            tp_degree=tp_degree,
-                        )
-            dump_df(df, parse_name)
+                dump_df(df, parse_name)
 
         # annotate operator graph with prediction
         df = pd.read_csv(parse_name, converters={"FwOps": ast.literal_eval, "BwOps": ast.literal_eval, "AccOps": ast.literal_eval, "InputShapes": ast.literal_eval, "OutputShape": ast.literal_eval})
