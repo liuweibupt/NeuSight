@@ -1,4 +1,5 @@
 .vscode
+.worktrees
 __pycache__
 core.python*
 log*
