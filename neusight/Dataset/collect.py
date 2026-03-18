@@ -14,8 +14,8 @@ import shutil
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.allow_tf32 = False
 
-starter = torch.cuda.Event(enable_timing=True)
-ender = torch.cuda.Event(enable_timing=True)
+starter = None
+ender = None
 active = 25
 sample = 5
 assert(active > sample)
@@ -54,6 +54,7 @@ kname = {
 
 
 def measure_once(op, input_batch):
+    starter, ender = _get_cuda_events()
     starter.record()
     out = op(*input_batch)
     ender.record()
@@ -317,3 +318,11 @@ def mark_ood(df):
         return b > 3072 or m > 3072 or n > 3072 or k > 3072
     df["OOD"] = df.apply(lambda x: is_ood(x["B"], x["M"], x["N"], x["K"]), axis=1)
     return df
+def _get_cuda_events():
+    global starter, ender
+
+    if starter is None or ender is None:
+        starter = torch.cuda.Event(enable_timing=True)
+        ender = torch.cuda.Event(enable_timing=True)
+
+    return starter, ender
