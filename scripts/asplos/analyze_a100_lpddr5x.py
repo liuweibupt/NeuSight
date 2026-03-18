@@ -132,6 +132,7 @@ def main():
     axes[1].legend(loc='lower right')
     fig.suptitle('Bandwidth sensitivity: GA100 HBM2 vs A100-LPDDR5X', fontsize=14)
     fig.savefig(OUT_DIR / 'a100_lpddr5x_component_throughput.png', dpi=180)
+    fig.savefig(OUT_DIR / 'a100_lpddr5x_component_throughput.svg')
 
     report_lines = [
         '# A100 LPDDR5X Bandwidth Sensitivity',
