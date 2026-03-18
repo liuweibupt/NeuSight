@@ -31,3 +31,29 @@ Because there is no discovered automated test suite, verification will use comma
 3. File existence checks for regenerated `summary/*.csv` outputs.
 4. Explicit extraction of A100 rows from regenerated summaries.
 5. Final report comparing regenerated values against repository reference outputs.
+
+## CPU-only Compatibility Fix During Reproduction
+- Added a regression test: `tests/test_cpu_import.py`
+- Root cause: `neusight/Dataset/collect.py` instantiated `torch.cuda.Event` at import time
+- Effect: `import neusight` failed under CPU-only torch before any prediction code could run
+- Fix: lazily create CUDA events only when measurement helpers are actually called
+- Verification: `PYTHONPATH=. pytest tests/test_cpu_import.py -q` → pass
+
+## Representative Script-level Reproduction
+Using the CPU-only venv and existing ASPLOS opgraph files, the following command completed successfully:
+
+```bash
+PYTHONPATH=. python scripts/pred.py \
+  --predictor_name neusight \
+  --predictor_path scripts/asplos/data/predictor/MLP_WAVE \
+  --device_config_path scripts/asplos/data/device_configs/NVIDIA_A100-PCIE-40GB.json \
+  --model_config_path scripts/asplos/data/DLmodel_configs/gpt3_xl.json \
+  --sequence_length 2048 \
+  --batch_size 2 \
+  --execution_type inf \
+  --tile_dataset_dir scripts/asplos/data/dataset/train \
+  --result_dir scripts/asplos/results
+```
+
+Observed output excerpt:
+- `E2E latency for gpt3_xl-inf-2048-2 on NVIDIA_A100-PCIE-40GB.json: 1821.57 ms`
